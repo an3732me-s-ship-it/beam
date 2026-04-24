@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Square Beam Between Markers</title>
+  <title>Dynamic Beam Thickness</title>
 
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -25,7 +25,7 @@
 
         if (m1.object3D.visible && m2.object3D.visible) {
 
-          // --- GET POSITIONS ---
+          // --- POSITIONS ---
           m1.object3D.getWorldPosition(this.p1);
           m2.object3D.getWorldPosition(this.p2);
 
@@ -35,16 +35,22 @@
           this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
           beam.object3D.position.copy(this.mid);
 
-          // --- SCALE (clean method) ---
-          const thickness = 0.15; // 👈 adjust chunkiness here
+          // --- THICKNESS BASED ON DISTANCE ---
+          const minT = 0.05;
+          const maxT = 0.35;
+
+          let thickness = 0.05 + distance * 0.12;
+          thickness = Math.min(maxT, Math.max(minT, thickness));
+
+          // --- SCALE ---
           beam.object3D.scale.set(thickness, distance, thickness);
 
-          // --- ORIENTATION (no drift) ---
+          // --- ORIENTATION ---
           this.dir.subVectors(this.p2, this.p1).normalize();
 
           const quaternion = new THREE.Quaternion();
           quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0), // box default up axis
+            new THREE.Vector3(0, 1, 0),
             this.dir
           );
 
@@ -66,25 +72,26 @@
            dynamic-beam>
 
     <!-- LIGHT -->
-    <a-entity light="type: ambient; intensity: 0.8;"></a-entity>
-    <a-entity light="type: directional; intensity: 1.0;" position="1 4 2"></a-entity>
+    <a-entity light="type: ambient; intensity: 0.9;"></a-entity>
+    <a-entity light="type: directional; intensity: 1.1;" position="1 4 2"></a-entity>
 
     <!-- MARKER 1 -->
     <a-marker id="marker-illum" type="pattern" url="pattern-illum.patt">
-      <a-box color="red" scale="0.2 0.2 0.2"></a-box>
+      <a-box color="#750808" scale="0.2 0.2 0.2"></a-box>
     </a-marker>
 
     <!-- MARKER 2 -->
     <a-marker id="marker-flow" type="pattern" url="pattern-flow.patt">
-      <a-box color="red" scale="0.2 0.2 0.2"></a-box>
+      <a-box color="#6B0707" scale="0.2 0.2 0.2"></a-box>
     </a-marker>
 
-    <!-- BEAM (unit box → scaled in JS) -->
+    <!-- BEAM -->
     <a-box id="beam"
            color="#D1C0C0"
            width="1"
            height="1"
            depth="1"
+           material="opacity: 0.85; transparent: true"
            visible="false">
     </a-box>
 
