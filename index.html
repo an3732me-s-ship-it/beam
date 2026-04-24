@@ -43,7 +43,7 @@
           // --- ROTATION (align X axis to direction) ---
           this.quat.setFromUnitVectors(this.xAxis, this.dir);
           beam.object3D.quaternion.copy(this.quat);
-          beam.object3D.rotateZ(Math.PI / 2);
+          beam.object3D.rotateY(Math.PI / 2);
 
           // --- SCALE ---
           // Your beam = 40 cm → 0.4 meters base length
