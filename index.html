@@ -48,24 +48,35 @@
 
           beam.object3D.scale.set(width, distance, depth);
 
-          // --- ORIENTATION ---
-          // direction from marker 1 to marker 2
+          // --- ORIENTATION (FIXED VERSION) ---
+
+          // 1. direction between markers
           this.dir.subVectors(this.p2, this.p1).normalize();
 
-          // define a stable "up" direction (world vertical)
-          const up = new THREE.Vector3(0, 1, 0);
-
-          // build a lookAt matrix
-          const matrix = new THREE.Matrix4();
-          matrix.lookAt(this.p1, this.p2, up);
-
-          // convert to quaternion
+          // 2. align beam (Y axis) to direction
           const quaternion = new THREE.Quaternion();
-          quaternion.setFromRotationMatrix(matrix);
+          quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0),
+            this.dir
+          );
 
-          // apply rotation to beam
+          // 3. stabilize rotation (prevent rolling)
+          const worldUp = new THREE.Vector3(0, 1, 0);
+
+          // current "side" direction of beam
+          const currentSide = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
+
+          // compute correction so beam doesn't spin
+          const correction = new THREE.Quaternion().setFromUnitVectors(
+            currentSide,
+            new THREE.Vector3(1, 0, 0)
+          );
+
+          // apply correction
+          quaternion.multiply(correction);
+
+          // 4. apply final rotation
           beam.object3D.quaternion.copy(quaternion);
-          beam.object3D.visible = true;
 
         } else {
           beam.object3D.visible = false;
