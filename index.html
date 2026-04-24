@@ -15,7 +15,7 @@
         this.mid = new THREE.Vector3();
         this.dir = new THREE.Vector3();
         this.quat = new THREE.Quaternion();
-        this.xAxis = new THREE.Vector3(1, 0, 0); // IMPORTANT: beam length along X
+        this.xAxis = new THREE.Vector3(0, 1, 0); // IMPORTANT: beam length along X
       },
 
       tick: function () {
@@ -57,7 +57,7 @@
           const depth = thickness * 0.5;   // Z
 
           // SCALE: X = length
-          beam.object3D.scale.set(lengthScale, height, depth);
+          beam.object3D.scale.set(height, lengthScale, depth);
 
           beam.object3D.visible = true;
 
