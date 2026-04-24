@@ -2,42 +2,52 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Marker Distance Line</title>
+  <title>Square Beam Between Markers</title>
 
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
   <script>
-    AFRAME.registerComponent('dynamic-line', {
+    AFRAME.registerComponent('dynamic-beam', {
       init: function () {
         this.p1 = new THREE.Vector3();
         this.p2 = new THREE.Vector3();
+        this.mid = new THREE.Vector3();
       },
 
       tick: function () {
         const m1 = document.querySelector('#marker-illum');
         const m2 = document.querySelector('#marker-flow');
-        const line = document.querySelector('#linkLine');
+        const beam = document.querySelector('#beam');
 
-        if (!m1 || !m2 || !line) return;
+        if (!m1 || !m2 || !beam) return;
 
         if (m1.object3D.visible && m2.object3D.visible) {
 
-          // Get positions
+          // positions
           m1.object3D.getWorldPosition(this.p1);
           m2.object3D.getWorldPosition(this.p2);
 
-          // Update line
-          line.setAttribute('line', {
-            start: `${this.p1.x} ${this.p1.y} ${this.p1.z}`,
-            end: `${this.p2.x} ${this.p2.y} ${this.p2.z}`,
-            color: '#00FFFF'
-          });
+          const distance = this.p1.distanceTo(this.p2);
 
-          line.object3D.visible = true;
+          // midpoint
+          this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
+          beam.object3D.position.copy(this.mid);
+
+          // scale (square profile)
+          const thickness = 0.05;
+          beam.object3D.scale.set(thickness, distance, thickness);
+
+          // orient toward second marker
+          beam.object3D.lookAt(this.p2);
+
+          // align box along the connection axis
+          beam.object3D.rotateX(Math.PI / 2);
+
+          beam.object3D.visible = true;
 
         } else {
-          line.object3D.visible = false;
+          beam.object3D.visible = false;
         }
       }
     });
@@ -47,27 +57,30 @@
 <body style="margin:0; overflow:hidden;">
   <a-scene embedded 
            arjs="sourceType: webcam; debugUIEnabled: false; patternRatio: 0.7;"
-           dynamic-line>
+           dynamic-beam>
 
-    <!-- LIGHT (optional but nice) -->
+    <!-- LIGHT -->
     <a-entity light="type: ambient; intensity: 0.8;"></a-entity>
     <a-entity light="type: directional; intensity: 1.0;" position="1 4 2"></a-entity>
 
     <!-- MARKER 1 -->
     <a-marker id="marker-illum" type="pattern" url="pattern-illum.patt">
-      <a-box color="#1976D2" scale="0.5 0.5 0.5"></a-box>
+      <a-box color="red" scale="0.2 0.2 0.2"></a-box>
     </a-marker>
 
     <!-- MARKER 2 -->
     <a-marker id="marker-flow" type="pattern" url="pattern-flow.patt">
-      <a-sphere color="#FF00FF" radius="0.3"></a-sphere>
+      <a-box color="red" scale="0.2 0.2 0.2"></a-box>
     </a-marker>
 
-    <!-- LINE -->
-    <a-entity id="linkLine"
-              line="start: 0 0 0; end: 0 0 0; color: #00FFFF"
-              visible="false">
-    </a-entity>
+    <!-- SQUARE BEAM -->
+    <a-box id="beam"
+           color="#00FFFF"
+           depth="1"
+           height="1"
+           width="1"
+           visible="false">
+    </a-box>
 
     <a-entity camera></a-entity>
   </a-scene>
