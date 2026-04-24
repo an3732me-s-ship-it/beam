@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Rectangular Beam</title>
+  <title>Stable Rectangular Beam</title>
 
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -13,7 +13,6 @@
         this.p1 = new THREE.Vector3();
         this.p2 = new THREE.Vector3();
         this.mid = new THREE.Vector3();
-        this.dir = new THREE.Vector3();
       },
 
       tick: function () {
@@ -25,7 +24,7 @@
 
         if (m1.object3D.visible && m2.object3D.visible) {
 
-          // --- POSITIONS ---
+          // --- GET POSITIONS ---
           m1.object3D.getWorldPosition(this.p1);
           m2.object3D.getWorldPosition(this.p2);
 
@@ -35,7 +34,7 @@
           this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
           beam.object3D.position.copy(this.mid);
 
-          // --- THICKNESS LOGIC ---
+          // --- THICKNESS (based on distance) ---
           const minT = 0.05;
           const maxT = 0.35;
 
@@ -43,40 +42,17 @@
           thickness = Math.min(maxT, Math.max(minT, thickness));
 
           // --- RECTANGULAR SECTION ---
-          const width = thickness * 0.5;  // narrower
-          const depth = thickness;        // deeper
+          const width = thickness * 0.5;
+          const depth = thickness;
 
+          // IMPORTANT: Y = length
           beam.object3D.scale.set(width, distance, depth);
 
-          // --- ORIENTATION (FIXED VERSION) ---
+          // --- SIMPLE STABLE ORIENTATION ---
+          beam.object3D.lookAt(this.p2);
+          beam.object3D.rotateX(Math.PI / 2);
 
-          // 1. direction between markers
-          this.dir.subVectors(this.p2, this.p1).normalize();
-
-          // 2. align beam (Y axis) to direction
-          const quaternion = new THREE.Quaternion();
-          quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0),
-            this.dir
-          );
-
-          // 3. stabilize rotation (prevent rolling)
-          const worldUp = new THREE.Vector3(0, 1, 0);
-
-          // current "side" direction of beam
-          const currentSide = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
-
-          // compute correction so beam doesn't spin
-          const correction = new THREE.Quaternion().setFromUnitVectors(
-            currentSide,
-            new THREE.Vector3(1, 0, 0)
-          );
-
-          // apply correction
-          quaternion.multiply(correction);
-
-          // 4. apply final rotation
-          beam.object3D.quaternion.copy(quaternion);
+          beam.object3D.visible = true;
 
         } else {
           beam.object3D.visible = false;
