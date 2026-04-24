@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Dynamic Beam Thickness</title>
+  <title>Rectangular Beam</title>
 
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -35,15 +35,18 @@
           this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
           beam.object3D.position.copy(this.mid);
 
-          // --- THICKNESS BASED ON DISTANCE ---
+          // --- THICKNESS LOGIC ---
           const minT = 0.05;
           const maxT = 0.35;
 
           let thickness = 0.05 + distance * 0.12;
           thickness = Math.min(maxT, Math.max(minT, thickness));
 
-          // --- SCALE ---
-          beam.object3D.scale.set(thickness, distance, thickness);
+          // --- RECTANGULAR SECTION ---
+          const width = thickness * 0.5;  // narrower
+          const depth = thickness;        // deeper
+
+          beam.object3D.scale.set(width, distance, depth);
 
           // --- ORIENTATION ---
           this.dir.subVectors(this.p2, this.p1).normalize();
@@ -75,14 +78,13 @@
     <a-entity light="type: ambient; intensity: 0.9;"></a-entity>
     <a-entity light="type: directional; intensity: 1.1;" position="1 4 2"></a-entity>
 
-    <!-- MARKER 1 -->
+    <!-- MARKERS -->
     <a-marker id="marker-illum" type="pattern" url="pattern-illum.patt">
-      <a-box color="#750808" scale="0.2 0.2 0.2"></a-box>
+      <a-box color="#850909" scale="0.2 0.2 0.2" material="opacity: 0.5; transparent:true"></a-box>
     </a-marker>
 
-    <!-- MARKER 2 -->
     <a-marker id="marker-flow" type="pattern" url="pattern-flow.patt">
-      <a-box color="#6B0707" scale="0.2 0.2 0.2"></a-box>
+      <a-box color="#750808" scale="0.2 0.2 0.2" material="opacity: 0.5; transparent:true"></a-box>
     </a-marker>
 
     <!-- BEAM -->
@@ -91,7 +93,7 @@
            width="1"
            height="1"
            depth="1"
-           material="opacity: 0.85; transparent: true"
+           material="opacity: 0.95; transparent: true"
            visible="false">
     </a-box>
 
