@@ -49,16 +49,22 @@
           beam.object3D.scale.set(width, distance, depth);
 
           // --- ORIENTATION ---
+          // direction from marker 1 to marker 2
           this.dir.subVectors(this.p2, this.p1).normalize();
 
+          // define a stable "up" direction (world vertical)
+          const up = new THREE.Vector3(0, 1, 0);
+
+          // build a lookAt matrix
+          const matrix = new THREE.Matrix4();
+          matrix.lookAt(this.p1, this.p2, up);
+
+          // convert to quaternion
           const quaternion = new THREE.Quaternion();
-          quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0),
-            this.dir
-          );
+          quaternion.setFromRotationMatrix(matrix);
 
+          // apply rotation to beam
           beam.object3D.quaternion.copy(quaternion);
-
           beam.object3D.visible = true;
 
         } else {
