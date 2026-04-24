@@ -13,6 +13,7 @@
         this.p1 = new THREE.Vector3();
         this.p2 = new THREE.Vector3();
         this.mid = new THREE.Vector3();
+        this.dir = new THREE.Vector3();
       },
 
       tick: function () {
@@ -24,25 +25,30 @@
 
         if (m1.object3D.visible && m2.object3D.visible) {
 
-          // positions
+          // --- GET POSITIONS ---
           m1.object3D.getWorldPosition(this.p1);
           m2.object3D.getWorldPosition(this.p2);
 
           const distance = this.p1.distanceTo(this.p2);
 
-          // midpoint
+          // --- MIDPOINT ---
           this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
           beam.object3D.position.copy(this.mid);
 
-          // scale (square profile)
-          const thickness = 0.05;
+          // --- SCALE (clean method) ---
+          const thickness = 0.15; // 👈 adjust chunkiness here
           beam.object3D.scale.set(thickness, distance, thickness);
 
-          // orient toward second marker
-          beam.object3D.lookAt(this.p2);
+          // --- ORIENTATION (no drift) ---
+          this.dir.subVectors(this.p2, this.p1).normalize();
 
-          // align box along the connection axis
-          beam.object3D.rotateX(Math.PI / 2);
+          const quaternion = new THREE.Quaternion();
+          quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0), // box default up axis
+            this.dir
+          );
+
+          beam.object3D.quaternion.copy(quaternion);
 
           beam.object3D.visible = true;
 
@@ -73,12 +79,12 @@
       <a-box color="red" scale="0.2 0.2 0.2"></a-box>
     </a-marker>
 
-    <!-- SQUARE BEAM -->
+    <!-- BEAM (unit box → scaled in JS) -->
     <a-box id="beam"
            color="#D1C0C0"
-           depth="2"
-           height="4"
-           width="2"
+           width="1"
+           height="1"
+           depth="1"
            visible="false">
     </a-box>
 
