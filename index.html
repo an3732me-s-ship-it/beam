@@ -29,27 +29,25 @@
             if (!m1 || !m2 || !beam) return;
 
             // --- 1. MODEL SELECTOR ---
-            // Decides which model file to use based on the switch marker
-            let targetModel = (mSwitch && mSwitch.object3D.visible) ? "url(beam_s.glb)" : "url(beam_w.glb)";
+            // Switch between beam_w and beam_s based on the 3rd marker
+            let targetModel = (mSwitch && mSwitch.object3D.visible) ? "beam_s.glb" : "beam_w.glb";
 
-            // Only update if the model has actually changed to prevent a reload loop
             if (beam.getAttribute('gltf-model') !== targetModel) {
                 beam.setAttribute('gltf-model', targetModel);
             }
 
             // --- 2. THE ENGINE ---
-            // Only runs if both primary markers are visible
             if (m1.object3D.visible && m2.object3D.visible) {
                 m1.object3D.getWorldPosition(this.p1);
                 m2.object3D.getWorldPosition(this.p2);
 
                 const actualDistance = this.p1.distanceTo(this.p2);
 
-                // --- YOUR SAVED CALIBRATIONS ---
+                // --- CALIBRATION SETTINGS ---
                 const gapOffset = 0.06;      
                 const sensitivity = 0.1;    
-                const dangerThreshold = 5.0; 
-                // -------------------------------
+                const dangerThreshold = 2.0; // Adjusted based on your HUD screenshot
+                // ----------------------------
 
                 // HUD UPDATE
                 if (this.hud) {
@@ -60,12 +58,12 @@
                     this.hud.innerHTML = `Dist: ${actualDistance.toFixed(3)}<br>Model: ${activeModel}<br>Status: ${statusText}`;
                 }
 
-                // LENGTH CALCULATION
+                // CALC LENGTH
                 let beamLengthNeeded = actualDistance - gapOffset;
                 if (beamLengthNeeded < 0) beamLengthNeeded = 0;
                 const lengthScale = beamLengthNeeded / sensitivity;
 
-                // POSITION AND ROTATION
+                // TRANSFORM BEAM
                 this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
                 beam.object3D.position.copy(this.mid);
                 
@@ -73,14 +71,13 @@
                 this.quat.setFromUnitVectors(this.axis, this.dir);
                 beam.object3D.quaternion.copy(this.quat);
                 
-                // Alignment and Orientation Fixes
                 beam.object3D.rotateZ(Math.PI / 2); 
-                beam.object3D.translateY(-0.02); 
+                beam.object3D.translateY(-0.02); // Your vertical alignment nudge
 
-                // SCALE (Keeping your 12x12 thickness)
+                // Thickness locked at 12x12
                 beam.object3D.scale.set(12, 12, lengthScale);
 
-                // COLOR CHANGE LOGIC
+                // COLOR LOGIC
                 const shouldBeDanger = actualDistance > dangerThreshold;
                 if (this.isDanger !== shouldBeDanger) {
                     this.isDanger = shouldBeDanger;
@@ -98,12 +95,10 @@
             } else {
                 if (this.hud) this.hud.innerHTML = "Searching for markers...";
                 beam.object3D.visible = false;
-         
             }
         }
     });
 
-    // Material fix to set initial color and properties
     AFRAME.registerComponent('fix-material', {
         init: function () {
             this.el.addEventListener('model-loaded', () => {
@@ -123,7 +118,7 @@
 </head>
 
 <body style="margin:0; overflow:hidden;">
-    <!-- DEBUG HUD -->
+    <!-- HUD -->
     <div id="hud" style="position: fixed; top: 10px; left: 10px; z-index: 999; 
                         background: rgba(0,0,0,0.8); color: white; padding: 10px; 
                         font-family: sans-serif; border-radius: 5px; pointer-events: none;">
@@ -134,28 +129,27 @@
              arjs="sourceType: webcam; debugUIEnabled: false; patternRatio: 0.7;" 
              dynamic-beam>
 
-        <!-- SWITCH MARKER -->
-        <a-marker id="marker-switch" type="pattern" url="pattern-switch2.patt">
-            <!-- A golden ring helps you know the marker is active -->
-            <a-ring color="gold" radius-inner="0.04" radius-outer="0.06" rotation="-90 0 0"></a-ring>
-        </a-marker>
-
         <a-entity light="type: ambient; intensity: 0.8;"></a-entity>
         <a-entity light="type: directional; intensity: 1.0;" position="1 4 2"></a-entity>
 
-        <!-- MARKER 1 -->
+        <!-- BEAM MARKER 1 -->
         <a-marker id="marker-illum" type="pattern" url="pattern-beam2.patt">
             <a-box color="blue" scale="0.05 0.05 0.05"></a-box>
         </a-marker>
 
-        <!-- MARKER 2 -->
+        <!-- BEAM MARKER 2 -->
         <a-marker id="marker-flow" type="pattern" url="pattern-beam1.patt">
             <a-box color="blue" scale="0.05 0.05 0.05"></a-box>
         </a-marker>
 
-        <!-- THE BEAM -->
+        <!-- SWITCHER MARKER -->
+        <a-marker id="marker-switch" type="pattern" url="pattern-switch2.patt">
+            <a-ring color="gold" radius-inner="0.04" radius-outer="0.06" rotation="-90 0 0"></a-ring>
+        </a-marker>
+
+        <!-- THE DYNAMIC BEAM -->
         <a-entity id="beam" 
-                  gltf-model="url(beam_w.glb)" 
+                  gltf-model="beam_w.glb" 
                   fix-material 
                   visible="false">
         </a-entity>
