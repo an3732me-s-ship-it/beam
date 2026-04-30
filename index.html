@@ -8,84 +8,72 @@
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
   <script>
-    AFRAME.registerComponent('dynamic-beam', {
-      init: function () {
-        this.p1 = new THREE.Vector3();
-        this.p2 = new THREE.Vector3();
-        this.mid = new THREE.Vector3();
-        this.dir = new THREE.Vector3();
-        this.quat = new THREE.Quaternion();
-        this.xAxis = new THREE.Vector3(0, 0, 1); // IMPORTANT: beam length along X
-      },
+  AFRAME.registerComponent('dynamic-beam', {
+    init: function () {
+      this.p1 = new THREE.Vector3();
+      this.p2 = new THREE.Vector3();
+      this.mid = new THREE.Vector3();
+      this.dir = new THREE.Vector3();
+      this.quat = new THREE.Quaternion();
 
-      tick: function () {
-        const m1 = document.querySelector('#marker-illum');
-        const m2 = document.querySelector('#marker-flow');
-        const beam = document.querySelector('#beam');
+      // Assume beam length is along Z axis (change if needed)
+      this.axis = new THREE.Vector3(0, 0, 1);
+    },
 
-        if (!m1 || !m2 || !beam) return;
+    tick: function () {
+      const m1 = document.querySelector('#marker-illum');
+      const m2 = document.querySelector('#marker-flow');
+      const beam = document.querySelector('#beam');
 
-        if (m1.object3D.visible && m2.object3D.visible) {
+      if (!m1 || !m2 || !beam) return;
 
-          // --- GET POSITIONS ---
-          m1.object3D.getWorldPosition(this.p1);
-          m2.object3D.getWorldPosition(this.p2);
+      if (m1.object3D.visible && m2.object3D.visible) {
 
-          const distance = this.p1.distanceTo(this.p2);
+        // --- GET POSITIONS ---
+        m1.object3D.getWorldPosition(this.p1);
+        m2.object3D.getWorldPosition(this.p2);
 
-          // --- MIDPOINT ---
-          this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
-          beam.object3D.position.copy(this.mid);
+        // --- MIDPOINT POSITION ---
+        this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
+        beam.object3D.position.copy(this.mid);
 
-          // --- DIRECTION ---
-          this.dir.subVectors(this.p2, this.p1).normalize();
+        // --- DIRECTION ---
+        this.dir.subVectors(this.p2, this.p1).normalize();
 
-          // --- ROTATION (align X axis to direction) ---
-          this.quat.setFromUnitVectors(this.xAxis, this.dir);
-          beam.object3D.quaternion.copy(this.quat);
+        // --- ROTATION ---
+        this.quat.setFromUnitVectors(this.axis, this.dir);
+        beam.object3D.quaternion.copy(this.quat);
 
-          // --- SCALE ---
-          // Your beam = 40 cm → 0.4 meters base length
-          const baseLength = 0.4;
+        // ✅ NO SCALING (true Rhino geometry)
+        beam.object3D.scale.set(1, 1, 1);
 
-          const lengthScale = distance / baseLength;
+        beam.object3D.visible = true;
 
-          // thickness grows with distance
-          let thickness = 2 + distance * 6;
-
-          const height = thickness;        // Y
-          const depth = thickness * 0.5;   // Z
-
-          // SCALE: X = length
-          beam.object3D.scale.set(height, lengthScale, depth);
-
-          beam.object3D.visible = true;
-
-        } else {
-          beam.object3D.visible = false;
-        }
+      } else {
+        beam.object3D.visible = false;
       }
-    });
+    }
+  });
 
-    // MATERIAL FIX (important for GLB visibility)
-    AFRAME.registerComponent('fix-material', {
-      init: function () {
-        this.el.addEventListener('model-loaded', () => {
-          const mesh = this.el.getObject3D('mesh');
-          if (!mesh) return;
+  // --- MATERIAL FIX ---
+  AFRAME.registerComponent('fix-material', {
+    init: function () {
+      this.el.addEventListener('model-loaded', () => {
+        const mesh = this.el.getObject3D('mesh');
+        if (!mesh) return;
 
-          mesh.traverse((node) => {
-            if (node.isMesh) {
-              node.material.color.set('#8db396');
-              node.material.roughness = 0.6;
-              node.material.metalness = 0.1;
-              node.material.transparent = false;
-            }
-          });
+        mesh.traverse((node) => {
+          if (node.isMesh) {
+            node.material.color.set('#8db396');
+            node.material.roughness = 0.6;
+            node.material.metalness = 0.1;
+            node.material.transparent = false;
+          }
         });
-      }
-    });
-  </script>
+      });
+    }
+  });
+</script>
 </head>
 
 <body style="margin:0; overflow:hidden;">
