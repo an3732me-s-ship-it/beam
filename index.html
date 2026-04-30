@@ -15,8 +15,6 @@
     this.mid = new THREE.Vector3();
     this.dir = new THREE.Vector3();
     this.quat = new THREE.Quaternion();
-
-    // Use the Z-axis as the length reference as confirmed by your working orientation
     this.axis = new THREE.Vector3(0, 0, 1);
   },
 
@@ -28,30 +26,31 @@
     if (!m1 || !m2 || !beam) return;
 
     if (m1.object3D.visible && m2.object3D.visible) {
-      // 1. GET POSITIONS
       m1.object3D.getWorldPosition(this.p1);
       m2.object3D.getWorldPosition(this.p2);
 
-      // 2. CALCULATE DISTANCE
       const distance = this.p1.distanceTo(this.p2);
 
-      // 3. POSITION AT MIDPOINT
+      // Position and Rotation
       this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
       beam.object3D.position.copy(this.mid);
-
-      // 4. ROTATION (Using your confirmed axis)
       this.dir.subVectors(this.p2, this.p1).normalize();
       this.quat.setFromUnitVectors(this.axis, this.dir);
       beam.object3D.quaternion.copy(this.quat);
-      
-      // Keeping your orientation fix from the screenshot version
       beam.object3D.rotateZ(Math.PI / 2);
 
-      // 5. SCALE: INCREASE MULTIPLIER TO REACH MARKERS
-      // We lock Width (X) and Height (Y) to keep the rectangular shape.
-      // We multiply distance by 40 so the Z-axis length actually reaches the markers.
-      const multiplier = 12; 
-      beam.object3D.scale.set(12, 3, distance * multiplier);
+      // --- THE FIX FOR PROPORTIONS ---
+      // We keep X and Y at 12 to match your "nice" HTML scale.
+      // We only adjust Z. 
+      // If distance is 0.3m and multiplier is 40, Z becomes 12.
+      // This matches your 12, 12, 12 starting point!
+      
+      const multiplier = 40; // Adjust this until the ends touch the cubes
+      const dynamicLength = distance * multiplier;
+
+      // Set X and Y to 12 (your preferred thickness)
+      // Set Z to the dynamic length
+      beam.object3D.scale.set(12, 12, dynamicLength);
 
       beam.object3D.visible = true;
     } else {
