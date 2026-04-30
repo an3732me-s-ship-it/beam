@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>AR Beam Between Markers</title>
+  <title>AR Beam Stable</title>
 
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -13,15 +13,6 @@
         this.p1 = new THREE.Vector3();
         this.p2 = new THREE.Vector3();
         this.mid = new THREE.Vector3();
-        this.dir = new THREE.Vector3();
-
-        this.quat = new THREE.Quaternion();
-        this.matrix = new THREE.Matrix4();
-        this.up = new THREE.Vector3(0, 1, 0);
-
-        // smoothing
-        this.smoothPos = new THREE.Vector3();
-        this.smoothQuat = new THREE.Quaternion();
       },
 
       tick: function () {
@@ -33,54 +24,34 @@
 
         if (m1.object3D.visible && m2.object3D.visible) {
 
-          // --- POSITIONS ---
+          // --- GET POSITIONS ---
           m1.object3D.getWorldPosition(this.p1);
           m2.object3D.getWorldPosition(this.p2);
 
           const distance = this.p1.distanceTo(this.p2);
 
-          // --- MIDPOINT ---
+          // --- POSITION (MIDPOINT) ---
           this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
+          beam.object3D.position.copy(this.mid);
 
-          // --- DIRECTION ---
-          this.dir.subVectors(this.p2, this.p1).normalize();
+          // --- ROTATION ---
+          beam.object3D.lookAt(this.p2);
 
-          // --- STABLE ROTATION (no twist) ---
-          this.matrix.lookAt(this.p1, this.p2, this.up);
-          this.quat.setFromRotationMatrix(this.matrix);
+          // 🔴 IMPORTANT: flip if beam points wrong way
+          beam.object3D.rotation.y += Math.PI;
 
-          // --- SMOOTHING ---
-          this.smoothPos.lerp(this.mid, 0.2);
-          this.smoothQuat.slerp(this.quat, 0.2);
+          // --- SCALE ---
+          const baseLength = 0.10; // your 10 cm model
 
-          beam.object3D.position.copy(this.smoothPos);
-          beam.object3D.quaternion.copy(this.smoothQuat);
+          const lengthScale = distance / baseLength;
 
-          // --- NON-LINEAR BUT BALANCED SCALING ---
-
-          const baseLength = 0.10;
-          
-          // Length: grows but stays controlled
-          let lengthScale = distance / baseLength;
-          lengthScale = 0.8 + Math.pow(lengthScale, 1.05); // gentle curve
-          
-          // Clamp to avoid extreme stretching
-          lengthScale = Math.min(lengthScale, 6);
-          
-          // Thickness: grows a bit more to compensate visually
-          const baseX = 0.01;
-          const baseY = 0.03;
-          
-          // stronger thickness response
-          const thicknessFactor = 0.8 + Math.pow(distance, 0.5) * 0.6;
-          
-          // smaller global boost
-          const visualBoost = 2.0;
+          // keep thickness constant (clean + readable)
+          const thickness = 0.04;
 
           beam.object3D.scale.set(
-            baseX * thicknessFactor * visualBoost,
-            baseY * thicknessFactor * visualBoost,
-            lengthScale * visualBoost
+            thickness,
+            thickness,
+            lengthScale
           );
 
           beam.object3D.visible = true;
@@ -91,7 +62,7 @@
       }
     });
 
-    // --- MATERIAL FIX + COLOR ---
+    // --- MATERIAL FIX ---
     AFRAME.registerComponent('fix-material', {
       init: function () {
         this.el.addEventListener('model-loaded', () => {
@@ -101,13 +72,12 @@
           mesh.traverse((node) => {
             if (node.isMesh) {
               node.material.color.set('#8db396');
-              node.material.roughness = 0.5;
+              node.material.roughness = 0.6;
               node.material.metalness = 0.1;
-              node.material.transparent = false;
 
-              // optional: slight glow feel
+              // slight emissive for visibility
               node.material.emissive = new THREE.Color('#8db396');
-              node.material.emissiveIntensity = 0.3;
+              node.material.emissiveIntensity = 0.2;
             }
           });
         });
@@ -121,9 +91,8 @@
            arjs="sourceType: webcam; debugUIEnabled: false; patternRatio: 0.7;"
            dynamic-beam>
 
-    <!-- LIGHTING -->
-    <a-entity light="type: ambient; intensity: 0.9;"></a-entity>
-    <a-entity light="type: directional; intensity: 1.2;" position="1 4 2"></a-entity>
+    <!-- LIGHT -->
+    <a-entity light="type: ambient; intensity: 1;"></a-entity>
 
     <!-- MARKER 1 -->
     <a-marker id="marker-illum" type="pattern" url="pattern-illum.patt">
