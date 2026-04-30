@@ -45,12 +45,7 @@
         beam.object3D.quaternion.copy(this.quat);
         beam.object3D.rotateZ(Math.PI / 2);
         
-        const baseLength = 0.10; // your Rhino beam = 10 cm
-
-        const lengthScale = distance / baseLength;
-
-        // preserve cross-section scale (from HTML, e.g. 10 10 10)
-        beam.object3D.scale.z = lengthScale;
+        
 
         beam.object3D.visible = true;
 
