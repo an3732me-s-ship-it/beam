@@ -1,8 +1,8 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>GLB Beam Between Markers</title>
+  <title>AR Beam Between Markers</title>
 
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -14,10 +14,14 @@
         this.p2 = new THREE.Vector3();
         this.mid = new THREE.Vector3();
         this.dir = new THREE.Vector3();
+
         this.quat = new THREE.Quaternion();
-        this.xAxis = new THREE.Vector3(0, 0, 1); // IMPORTANT: beam length along X
-        this.up = new THREE.Vector3(0, 1, 0);
         this.matrix = new THREE.Matrix4();
+        this.up = new THREE.Vector3(0, 1, 0);
+
+        // smoothing
+        this.smoothPos = new THREE.Vector3();
+        this.smoothQuat = new THREE.Quaternion();
       },
 
       tick: function () {
@@ -29,7 +33,7 @@
 
         if (m1.object3D.visible && m2.object3D.visible) {
 
-          // --- GET POSITIONS ---
+          // --- POSITIONS ---
           m1.object3D.getWorldPosition(this.p1);
           m2.object3D.getWorldPosition(this.p2);
 
@@ -37,30 +41,42 @@
 
           // --- MIDPOINT ---
           this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
-          beam.object3D.position.copy(this.mid);
 
           // --- DIRECTION ---
           this.dir.subVectors(this.p2, this.p1).normalize();
 
-          // --- ROTATION (align X axis to direction) ---
+          // --- STABLE ROTATION (no twist) ---
           this.matrix.lookAt(this.p1, this.p2, this.up);
           this.quat.setFromRotationMatrix(this.matrix);
-          beam.object3D.quaternion.copy(this.quat);
 
-          // --- SCALE ---
-          // Your beam = 40 cm → 0.4 meters base length
-          const baseLength = 0.4;
+          // --- SMOOTHING ---
+          this.smoothPos.lerp(this.mid, 0.2);
+          this.smoothQuat.slerp(this.quat, 0.2);
 
-          const lengthScale = distance / baseLength;
+          beam.object3D.position.copy(this.smoothPos);
+          beam.object3D.quaternion.copy(this.smoothQuat);
 
-          // thickness grows with distance
-          let thickness = 2 + distance * 6;
+          // --- NON-LINEAR SCALING ---
+          const baseLength = 0.10; // 10 cm from Rhino model
 
-          const height = thickness;        // Y
-          const depth = thickness * 0.5;   // Z
+          // length grows faster
+          const lengthScale = Math.pow(distance / baseLength, 1.2);
 
-          // SCALE: X = length
-          beam.object3D.scale.set(height, lengthScale, depth);
+          // preserve Rhino proportions (1 × 3 cm)
+          const baseX = 0.01;
+          const baseY = 0.03;
+
+          // thickness grows slower
+          const thicknessFactor = 0.5 + Math.pow(distance, 0.3);
+
+          // boost for AR visibility
+          const visualBoost = 3.0;
+
+          beam.object3D.scale.set(
+            baseX * thicknessFactor * visualBoost,
+            baseY * thicknessFactor * visualBoost,
+            lengthScale * visualBoost
+          );
 
           beam.object3D.visible = true;
 
@@ -70,7 +86,7 @@
       }
     });
 
-    // MATERIAL FIX (important for GLB visibility)
+    // --- MATERIAL FIX + COLOR ---
     AFRAME.registerComponent('fix-material', {
       init: function () {
         this.el.addEventListener('model-loaded', () => {
@@ -80,9 +96,13 @@
           mesh.traverse((node) => {
             if (node.isMesh) {
               node.material.color.set('#8db396');
-              node.material.roughness = 0.8;
+              node.material.roughness = 0.5;
               node.material.metalness = 0.1;
               node.material.transparent = false;
+
+              // optional: slight glow feel
+              node.material.emissive = new THREE.Color('#8db396');
+              node.material.emissiveIntensity = 0.3;
             }
           });
         });
@@ -110,7 +130,7 @@
       <a-box color="red" scale="0.2 0.2 0.2"></a-box>
     </a-marker>
 
-    <!-- GLB BEAM -->
+    <!-- BEAM -->
     <a-entity id="beam"
               gltf-model="url(beam_w.glb)"
               fix-material
