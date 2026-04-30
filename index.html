@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>AR Beam Stable</title>
+  <title>GLB Beam Between Markers</title>
 
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -13,6 +13,9 @@
         this.p1 = new THREE.Vector3();
         this.p2 = new THREE.Vector3();
         this.mid = new THREE.Vector3();
+        this.dir = new THREE.Vector3();
+        this.quat = new THREE.Quaternion();
+        this.xAxis = new THREE.Vector3(0, 0, 1); // IMPORTANT: beam length along X
       },
 
       tick: function () {
@@ -30,29 +33,31 @@
 
           const distance = this.p1.distanceTo(this.p2);
 
-          // --- POSITION (MIDPOINT) ---
+          // --- MIDPOINT ---
           this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
           beam.object3D.position.copy(this.mid);
 
-          // --- ROTATION ---
-          beam.object3D.lookAt(this.p2);
+          // --- DIRECTION ---
+          this.dir.subVectors(this.p2, this.p1).normalize();
 
-          // 🔴 IMPORTANT: flip if beam points wrong way
-          beam.object3D.rotation.y += Math.PI;
+          // --- ROTATION (align X axis to direction) ---
+          this.quat.setFromUnitVectors(this.xAxis, this.dir);
+          beam.object3D.quaternion.copy(this.quat);
 
           // --- SCALE ---
-          const baseLength = 0.10; // your 10 cm model
+          // Your beam = 40 cm → 0.4 meters base length
+          const baseLength = 0.4;
 
           const lengthScale = distance / baseLength;
 
-          // keep thickness constant (clean + readable)
-          const thickness = 0.04;
+          // thickness grows with distance
+          let thickness = 2 + distance * 6;
 
-          beam.object3D.scale.set(
-            thickness,
-            thickness,
-            lengthScale
-          );
+          const height = thickness;        // Y
+          const depth = thickness * 0.5;   // Z
+
+          // SCALE: X = length
+          beam.object3D.scale.set(height, lengthScale, depth);
 
           beam.object3D.visible = true;
 
@@ -62,7 +67,7 @@
       }
     });
 
-    // --- MATERIAL FIX ---
+    // MATERIAL FIX (important for GLB visibility)
     AFRAME.registerComponent('fix-material', {
       init: function () {
         this.el.addEventListener('model-loaded', () => {
@@ -74,10 +79,7 @@
               node.material.color.set('#8db396');
               node.material.roughness = 0.6;
               node.material.metalness = 0.1;
-
-              // slight emissive for visibility
-              node.material.emissive = new THREE.Color('#8db396');
-              node.material.emissiveIntensity = 0.2;
+              node.material.transparent = false;
             }
           });
         });
@@ -91,8 +93,9 @@
            arjs="sourceType: webcam; debugUIEnabled: false; patternRatio: 0.7;"
            dynamic-beam>
 
-    <!-- LIGHT -->
-    <a-entity light="type: ambient; intensity: 1;"></a-entity>
+    <!-- LIGHTING -->
+    <a-entity light="type: ambient; intensity: 0.9;"></a-entity>
+    <a-entity light="type: directional; intensity: 1.2;" position="1 4 2"></a-entity>
 
     <!-- MARKER 1 -->
     <a-marker id="marker-illum" type="pattern" url="pattern-illum.patt">
@@ -104,7 +107,7 @@
       <a-box color="red" scale="0.2 0.2 0.2"></a-box>
     </a-marker>
 
-    <!-- BEAM -->
+    <!-- GLB BEAM -->
     <a-entity id="beam"
               gltf-model="url(beam_w.glb)"
               fix-material
