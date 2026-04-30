@@ -44,9 +44,16 @@
                 const actualDistance = this.p1.distanceTo(this.p2);
 
                 // --- CALIBRATION SETTINGS ---
-                const gapOffset = 0.06;      
-                const sensitivity = 0.1;    
-                const dangerThreshold = 5.0; // Adjusted based on your HUD screenshot
+               const gapOffset = 0.06;      
+    const sensitivity = 0.1;    
+
+    // This is the new "Dynamic Tolerance" logic
+    let dangerThreshold;
+    if (targetModel === "beam_s.glb") {
+        dangerThreshold = 6.0; // Model S limit
+    } else {
+        dangerThreshold = 4.0; // Model W limit
+    }
                 // ----------------------------
 
                 // HUD UPDATE
@@ -78,18 +85,32 @@
                 beam.object3D.scale.set(12, 12, lengthScale);
 
                 // COLOR LOGIC
-                const shouldBeDanger = actualDistance > dangerThreshold;
-                if (this.isDanger !== shouldBeDanger) {
-                    this.isDanger = shouldBeDanger;
-                    const mesh = beam.getObject3D('mesh');
-                    if (mesh) {
-                        mesh.traverse((node) => {
-                            if (node.isMesh && node.material) {
-                                node.material.color.set(this.isDanger ? '#ff0000' : '#8db396');
-                            }
-                        });
+                // --- 5. UPDATED COLOR LOGIC ---
+const shouldBeDanger = actualDistance > dangerThreshold;
+
+if (this.isDanger !== shouldBeDanger || this.lastModel !== targetModel) {
+    this.isDanger = shouldBeDanger;
+    this.lastModel = targetModel; // Track which model we are coloring
+
+    const mesh = beam.getObject3D('mesh');
+    if (mesh) {
+        mesh.traverse((node) => {
+            if (node.isMesh && node.material) {
+                if (this.isDanger) {
+                    // Both models turn RED when they pass their limit
+                    node.material.color.set('#ff0000');
+                } else {
+                    // DIFFERENT colors for each model when they are SAFE
+                    if (targetModel === "beam_s.glb") {
+                        node.material.color.set('#4da6ff'); // A nice Blue for Model S
+                    } else {
+                        node.material.color.set('#8db396'); // The original Green for Model W
                     }
                 }
+            }
+        });
+    }
+}
 
                 beam.object3D.visible = true;
             } else {
