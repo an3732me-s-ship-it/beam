@@ -8,7 +8,7 @@
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
   <script>
- AFRAME.registerComponent('dynamic-beam', {
+AFRAME.registerComponent('dynamic-beam', {
   init: function () {
     this.p1 = new THREE.Vector3();
     this.p2 = new THREE.Vector3();
@@ -16,78 +16,66 @@
     this.dir = new THREE.Vector3();
     this.quat = new THREE.Quaternion();
     this.axis = new THREE.Vector3(0, 0, 1);
+    this.isDanger = false; // Track state to prevent over-updating
   },
 
   tick: function () {
-      const m1 = document.querySelector('#marker-illum');
-      const m2 = document.querySelector('#marker-flow');
-      const beam = document.querySelector('#beam');
+    const m1 = document.querySelector('#marker-illum');
+    const m2 = document.querySelector('#marker-flow');
+    const beam = document.querySelector('#beam');
 
-      if (!m1 || !m2 || !beam) return;
+    if (!m1 || !m2 || !beam) return;
 
-      if (m1.object3D.visible && m2.object3D.visible) {
-        m1.object3D.getWorldPosition(this.p1);
-        m2.object3D.getWorldPosition(this.p2);
+    if (m1.object3D.visible && m2.object3D.visible) {
+      m1.object3D.getWorldPosition(this.p1);
+      m2.object3D.getWorldPosition(this.p2);
 
-        const actualDistance = this.p1.distanceTo(this.p2);
+      const actualDistance = this.p1.distanceTo(this.p2);
 
-        // --- CALIBRATION ---
-        const gapOffset = 0.06;   
-        const sensitivity = 0.1;  
-        const dangerThreshold = 0.15; //15cm: the point where it turns red
-        // ---------------------------
+      // --- SETTINGS ---
+      const gapOffset = 0.06;   
+      const sensitivity = 0.1;  
+      const dangerThreshold = 0.40; // 40cm limit
+      // ----------------
 
-        let beamLengthNeeded = actualDistance - gapOffset;
-        if (beamLengthNeeded < 0) beamLengthNeeded = 0;
+      let beamLengthNeeded = actualDistance - gapOffset;
+      if (beamLengthNeeded < 0) beamLengthNeeded = 0;
 
-        const lengthScale = beamLengthNeeded / sensitivity;
+      const lengthScale = beamLengthNeeded / sensitivity;
 
-        // Apply Position and Rotation
-        this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
-        beam.object3D.position.copy(this.mid);
-        this.dir.subVectors(this.p2, this.p1).normalize();
-        this.quat.setFromUnitVectors(this.axis, this.dir);
-        beam.object3D.quaternion.copy(this.quat);
-        beam.object3D.rotateZ(Math.PI / 2);
-        beam.object3D.scale.set(12, 12, lengthScale);
+      // Position and Rotation
+      this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
+      beam.object3D.position.copy(this.mid);
+      this.dir.subVectors(this.p2, this.p1).normalize();
+      this.quat.setFromUnitVectors(this.axis, this.dir);
+      beam.object3D.quaternion.copy(this.quat);
+      beam.object3D.rotateZ(Math.PI / 2);
+      
+      // Scale: 12x12 thickness as requested
+      beam.object3D.scale.set(12, 12, lengthScale);
 
-        // --- COLOR CHANGE LOGIC ---
+      // --- STABLE COLOR LOGIC ---
+      const shouldBeDanger = actualDistance > dangerThreshold;
+      
+      // Only update if the status has actually changed
+      if (this.isDanger !== shouldBeDanger) {
+        this.isDanger = shouldBeDanger;
         const mesh = beam.getObject3D('mesh');
         if (mesh) {
           mesh.traverse((node) => {
             if (node.isMesh) {
-              if (actualDistance > dangerThreshold) {
-                node.material.color.set('#ff0000'); // Danger Red
-              } else {
-                node.material.color.set('#8db396'); // Original Green
-              }
+              node.material.color.set(this.isDanger ? '#ff0000' : '#8db396');
             }
           });
         }
-
-        beam.object3D.visible = true;
-      } else {
-        beam.object3D.visible = false;
       }
-    }
-    
-  AFRAME.registerComponent('fix-material', {
-    init: function () {
-      this.el.addEventListener('model-loaded', () => {
-        const mesh = this.el.getObject3D('mesh');
-        if (!mesh) return;
 
-        mesh.traverse((node) => {
-          if (node.isMesh) {
-            node.material.color.set('#8db396');
-            node.material.roughness = 0.6;
-            node.material.metalness = 0.1;
-            node.material.transparent = false;
-          }
-        });
-      });
+      beam.object3D.visible = true;
+    } else {
+      beam.object3D.visible = false;
     }
-  });
+  }
+});
 </script>
 </head>
 
