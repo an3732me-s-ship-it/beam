@@ -29,28 +29,28 @@
       m1.object3D.getWorldPosition(this.p1);
       m2.object3D.getWorldPosition(this.p2);
 
-      const distance = this.p1.distanceTo(this.p2);
+      const actualDistance = this.p1.distanceTo(this.p2);
 
-      // Position and Rotation
+      // --- CALIBRATION ---
+      // Subtract your 6cm offset (0.06m) so touching = 0 length
+      let beamLength = actualDistance - 0.06;
+      if (beamLength < 0) beamLength = 0;
+
+      // Position at Midpoint
       this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
       beam.object3D.position.copy(this.mid);
+
+      // Rotation (Using your confirmed Z-axis orientation)
       this.dir.subVectors(this.p2, this.p1).normalize();
       this.quat.setFromUnitVectors(this.axis, this.dir);
       beam.object3D.quaternion.copy(this.quat);
       beam.object3D.rotateZ(Math.PI / 2);
 
-      // --- THE FIX FOR PROPORTIONS ---
-      // We keep X and Y at 12 to match your "nice" HTML scale.
-      // We only adjust Z. 
-      // If distance is 0.3m and multiplier is 40, Z becomes 12.
-      // This matches your 12, 12, 12 starting point!
-      
-      const multiplier = 40; // Adjust this until the ends touch the cubes
-      const dynamicLength = distance * multiplier;
-
-      // Set X and Y to 12 (your preferred thickness)
-      // Set Z to the dynamic length
-      beam.object3D.scale.set(12, 12, dynamicLength);
+      // --- SCALE ---
+      // Keep X and Y at 12 to preserve your "nice" rectangular shape
+      // Multiply beamLength by a factor (try 30-40) to reach the cubes
+      const stretchFactor = 35; 
+      beam.object3D.scale.set(12, 12, beamLength * stretchFactor);
 
       beam.object3D.visible = true;
     } else {
@@ -58,7 +58,7 @@
     }
   }
 });
-
+    
   AFRAME.registerComponent('fix-material', {
     init: function () {
       this.el.addEventListener('model-loaded', () => {
