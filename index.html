@@ -31,26 +31,28 @@
 
       const actualDistance = this.p1.distanceTo(this.p2);
 
-      // --- CALIBRATION ---
-      // Subtract your 6cm offset (0.06m) so touching = 0 length
-      let beamLength = actualDistance - 0.06;
-      if (beamLength < 0) beamLength = 0;
+      // 1. Subtract the 6cm gap between marker centers
+      let beamLengthNeeded = actualDistance - 0.06;
+      if (beamLengthNeeded < 0) beamLengthNeeded = 0;
 
-      // Position at Midpoint
+      // 2. THE RATIO CALCULATION
+      // If your model is 40cm long (0.4m), we divide by 0.4.
+      // This makes the scale "1.0" when the markers are exactly 40cm apart (plus the 6cm).
+      const modelBaseLength = 0.4; 
+      const lengthScale = beamLengthNeeded / modelBaseLength;
+
+      // 3. APPLY POSITION & ROTATION
       this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
       beam.object3D.position.copy(this.mid);
-
-      // Rotation (Using your confirmed Z-axis orientation)
       this.dir.subVectors(this.p2, this.p1).normalize();
       this.quat.setFromUnitVectors(this.axis, this.dir);
       beam.object3D.quaternion.copy(this.quat);
       beam.object3D.rotateZ(Math.PI / 2);
 
-      // --- SCALE ---
-      // Keep X and Y at 12 to preserve your "nice" rectangular shape
-      // Multiply beamLength by a factor (try 30-40) to reach the cubes
-      const stretchFactor = 35; 
-      beam.object3D.scale.set(12, 12, beamLength * stretchFactor);
+      // 4. THE SCALE
+      // We keep X and Y at 12 to preserve the rectangular cross-section you like.
+      // We only use the dynamic ratio for Z.
+      beam.object3D.scale.set(12, 12, lengthScale);
 
       beam.object3D.visible = true;
     } else {
