@@ -23,37 +23,49 @@
         tick: function () {
             const m1 = document.querySelector('#marker-illum');
             const m2 = document.querySelector('#marker-flow');
+            const mSwitch = document.querySelector('#marker-switch'); 
             const beam = document.querySelector('#beam');
 
             if (!m1 || !m2 || !beam) return;
 
+            // --- 1. MODEL SELECTOR ---
+            // Decides which model file to use based on the switch marker
+            let targetModel = (mSwitch && mSwitch.object3D.visible) ? "url(beam_s.glb)" : "url(beam_w.glb)";
+
+            // Only update if the model has actually changed to prevent a reload loop
+            if (beam.getAttribute('gltf-model') !== targetModel) {
+                beam.setAttribute('gltf-model', targetModel);
+            }
+
+            // --- 2. THE ENGINE ---
+            // Only runs if both primary markers are visible
             if (m1.object3D.visible && m2.object3D.visible) {
-                // 1. GET WORLD POSITIONS
                 m1.object3D.getWorldPosition(this.p1);
                 m2.object3D.getWorldPosition(this.p2);
 
                 const actualDistance = this.p1.distanceTo(this.p2);
 
-                // --- CALIBRATION SETTINGS ---
-                const gapOffset = 0.06;      // 6cm gap when markers touch
-                const sensitivity = 0.1;    // Your "Goldilocks" value
-                const dangerThreshold = 5; // Turns red at 35cm
-                // ----------------------------
+                // --- YOUR SAVED CALIBRATIONS ---
+                const gapOffset = 0.06;      
+                const sensitivity = 0.1;    
+                const dangerThreshold = 5.0; 
+                // -------------------------------
 
-                // 2. HUD UPDATE (For phone debugging)
+                // HUD UPDATE
                 if (this.hud) {
                     const statusText = actualDistance > dangerThreshold ? 
                         '<span style="color:#ff4444">DANGER</span>' : 
                         '<span style="color:#44ff44">SAFE</span>';
-                    this.hud.innerHTML = `Dist: ${actualDistance.toFixed(3)}<br>Status: ${statusText}`;
+                    const activeModel = targetModel.includes("beam_s") ? "Model S" : "Model W";
+                    this.hud.innerHTML = `Dist: ${actualDistance.toFixed(3)}<br>Model: ${activeModel}<br>Status: ${statusText}`;
                 }
 
-                // 3. CALC LENGTH
+                // LENGTH CALCULATION
                 let beamLengthNeeded = actualDistance - gapOffset;
                 if (beamLengthNeeded < 0) beamLengthNeeded = 0;
                 const lengthScale = beamLengthNeeded / sensitivity;
 
-                // 4. TRANSFORM BEAM
+                // POSITION AND ROTATION
                 this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
                 beam.object3D.position.copy(this.mid);
                 
@@ -61,12 +73,14 @@
                 this.quat.setFromUnitVectors(this.axis, this.dir);
                 beam.object3D.quaternion.copy(this.quat);
                 
-                beam.object3D.rotateZ(Math.PI / 2); // Internal orientation fix
+                // Alignment and Orientation Fixes
+                beam.object3D.rotateZ(Math.PI / 2); 
+                beam.object3D.translateY(-0.02); 
 
-                // Lock X and Y to 12 for the nice rectangular cross-section
+                // SCALE (Keeping your 12x12 thickness)
                 beam.object3D.scale.set(12, 12, lengthScale);
 
-                // 5. COLOR LOGIC
+                // COLOR CHANGE LOGIC
                 const shouldBeDanger = actualDistance > dangerThreshold;
                 if (this.isDanger !== shouldBeDanger) {
                     this.isDanger = shouldBeDanger;
@@ -84,6 +98,7 @@
             } else {
                 if (this.hud) this.hud.innerHTML = "Searching for markers...";
                 beam.object3D.visible = false;
+         
             }
         }
     });
@@ -118,6 +133,12 @@
     <a-scene embedded 
              arjs="sourceType: webcam; debugUIEnabled: false; patternRatio: 0.7;" 
              dynamic-beam>
+
+        <!-- SWITCH MARKER -->
+        <a-marker id="marker-switch" type="pattern" url="pattern-switch2.patt">
+            <!-- A golden ring helps you know the marker is active -->
+            <a-ring color="gold" radius-inner="0.04" radius-outer="0.06" rotation="-90 0 0"></a-ring>
+        </a-marker>
 
         <a-entity light="type: ambient; intensity: 0.8;"></a-entity>
         <a-entity light="type: directional; intensity: 1.0;" position="1 4 2"></a-entity>
