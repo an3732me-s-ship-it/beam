@@ -56,21 +56,26 @@
           beam.object3D.position.copy(this.smoothPos);
           beam.object3D.quaternion.copy(this.smoothQuat);
 
-          // --- NON-LINEAR SCALING ---
-          const baseLength = 0.10; // 10 cm from Rhino model
+          // --- NON-LINEAR BUT BALANCED SCALING ---
 
-          // length grows faster
-          const lengthScale = Math.pow(distance / baseLength, 1.2);
-
-          // preserve Rhino proportions (1 × 3 cm)
+          const baseLength = 0.10;
+          
+          // Length: grows but stays controlled
+          let lengthScale = distance / baseLength;
+          lengthScale = 0.8 + Math.pow(lengthScale, 1.05); // gentle curve
+          
+          // Clamp to avoid extreme stretching
+          lengthScale = Math.min(lengthScale, 6);
+          
+          // Thickness: grows a bit more to compensate visually
           const baseX = 0.01;
           const baseY = 0.03;
-
-          // thickness grows slower
-          const thicknessFactor = 0.5 + Math.pow(distance, 0.3);
-
-          // boost for AR visibility
-          const visualBoost = 3.0;
+          
+          // stronger thickness response
+          const thicknessFactor = 0.8 + Math.pow(distance, 0.5) * 0.6;
+          
+          // smaller global boost
+          const visualBoost = 2.0;
 
           beam.object3D.scale.set(
             baseX * thicknessFactor * visualBoost,
