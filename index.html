@@ -16,6 +16,8 @@
         this.dir = new THREE.Vector3();
         this.quat = new THREE.Quaternion();
         this.xAxis = new THREE.Vector3(0, 0, 1); // IMPORTANT: beam length along X
+        this.up = new THREE.Vector3(0, 1, 0);
+        this.matrix = new THREE.Matrix4();
       },
 
       tick: function () {
@@ -41,7 +43,8 @@
           this.dir.subVectors(this.p2, this.p1).normalize();
 
           // --- ROTATION (align X axis to direction) ---
-          this.quat.setFromUnitVectors(this.xAxis, this.dir);
+          this.matrix.lookAt(this.p1, this.p2, this.up);
+          this.quat.setFromRotationMatrix(this.matrix);
           beam.object3D.quaternion.copy(this.quat);
 
           // --- SCALE ---
