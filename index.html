@@ -1,111 +1,145 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>Dynamic Scaling GLB Beam</title>
+    <meta charset="utf-8">
+    <title>AR Dynamic Beam - Final Calibration</title>
 
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-  <script>
-AFRAME.registerComponent('dynamic-beam', {
-  init: function () {
-    this.p1 = new THREE.Vector3();
-    this.p2 = new THREE.Vector3();
-    this.mid = new THREE.Vector3();
-    this.dir = new THREE.Vector3();
-    this.quat = new THREE.Quaternion();
-    this.axis = new THREE.Vector3(0, 0, 1);
-    this.isDanger = false; // Track state to prevent over-updating
-  },
+    <script>
+    AFRAME.registerComponent('dynamic-beam', {
+        init: function () {
+            this.p1 = new THREE.Vector3();
+            this.p2 = new THREE.Vector3();
+            this.mid = new THREE.Vector3();
+            this.dir = new THREE.Vector3();
+            this.quat = new THREE.Quaternion();
+            this.axis = new THREE.Vector3(0, 0, 1);
+            this.isDanger = false;
+            this.hud = document.querySelector('#hud');
+        },
 
-  tick: function () {
-    const m1 = document.querySelector('#marker-illum');
-    const m2 = document.querySelector('#marker-flow');
-    const beam = document.querySelector('#beam');
+        tick: function () {
+            const m1 = document.querySelector('#marker-illum');
+            const m2 = document.querySelector('#marker-flow');
+            const beam = document.querySelector('#beam');
 
-    if (!m1 || !m2 || !beam) return;
+            if (!m1 || !m2 || !beam) return;
 
-    if (m1.object3D.visible && m2.object3D.visible) {
-      m1.object3D.getWorldPosition(this.p1);
-      m2.object3D.getWorldPosition(this.p2);
+            if (m1.object3D.visible && m2.object3D.visible) {
+                // 1. GET WORLD POSITIONS
+                m1.object3D.getWorldPosition(this.p1);
+                m2.object3D.getWorldPosition(this.p2);
 
-      const actualDistance = this.p1.distanceTo(this.p2);
+                const actualDistance = this.p1.distanceTo(this.p2);
 
-      // --- SETTINGS ---
-      const gapOffset = 0.06;   
-      const sensitivity = 0.1;  
-      const dangerThreshold = 0.10; // 40cm limit
-      // ----------------
+                // --- CALIBRATION SETTINGS ---
+                const gapOffset = 0.06;      // 6cm gap when markers touch
+                const sensitivity = 0.1;    // Your "Goldilocks" value
+                const dangerThreshold = 0.35; // Turns red at 35cm
+                // ----------------------------
 
-      let beamLengthNeeded = actualDistance - gapOffset;
-      if (beamLengthNeeded < 0) beamLengthNeeded = 0;
+                // 2. HUD UPDATE (For phone debugging)
+                if (this.hud) {
+                    const statusText = actualDistance > dangerThreshold ? 
+                        '<span style="color:#ff4444">DANGER</span>' : 
+                        '<span style="color:#44ff44">SAFE</span>';
+                    this.hud.innerHTML = `Dist: ${actualDistance.toFixed(3)}<br>Status: ${statusText}`;
+                }
 
-      const lengthScale = beamLengthNeeded / sensitivity;
+                // 3. CALC LENGTH
+                let beamLengthNeeded = actualDistance - gapOffset;
+                if (beamLengthNeeded < 0) beamLengthNeeded = 0;
+                const lengthScale = beamLengthNeeded / sensitivity;
 
-      // Position and Rotation
-      this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
-      beam.object3D.position.copy(this.mid);
-      this.dir.subVectors(this.p2, this.p1).normalize();
-      this.quat.setFromUnitVectors(this.axis, this.dir);
-      beam.object3D.quaternion.copy(this.quat);
-      beam.object3D.rotateZ(Math.PI / 2);
-      
-      // Scale: 12x12 thickness as requested
-      beam.object3D.scale.set(12, 12, lengthScale);
+                // 4. TRANSFORM BEAM
+                this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
+                beam.object3D.position.copy(this.mid);
+                
+                this.dir.subVectors(this.p2, this.p1).normalize();
+                this.quat.setFromUnitVectors(this.axis, this.dir);
+                beam.object3D.quaternion.copy(this.quat);
+                
+                beam.object3D.rotateZ(Math.PI / 2); // Internal orientation fix
 
-      // --- STABLE COLOR LOGIC ---
-      const shouldBeDanger = actualDistance > dangerThreshold;
-      
-      // Only update if the status has actually changed
-      if (this.isDanger !== shouldBeDanger) {
-        this.isDanger = shouldBeDanger;
-        const mesh = beam.getObject3D('mesh');
-        if (mesh) {
-          mesh.traverse((node) => {
-            if (node.isMesh) {
-              node.material.color.set(this.isDanger ? '#ff0000' : '#8db396');
+                // Lock X and Y to 12 for the nice rectangular cross-section
+                beam.object3D.scale.set(12, 12, lengthScale);
+
+                // 5. COLOR LOGIC
+                const shouldBeDanger = actualDistance > dangerThreshold;
+                if (this.isDanger !== shouldBeDanger) {
+                    this.isDanger = shouldBeDanger;
+                    const mesh = beam.getObject3D('mesh');
+                    if (mesh) {
+                        mesh.traverse((node) => {
+                            if (node.isMesh && node.material) {
+                                node.material.color.set(this.isDanger ? '#ff0000' : '#8db396');
+                            }
+                        });
+                    }
+                }
+
+                beam.object3D.visible = true;
+            } else {
+                if (this.hud) this.hud.innerHTML = "Searching for markers...";
+                beam.object3D.visible = false;
             }
-          });
         }
-      }
+    });
 
-      beam.object3D.visible = true;
-    } else {
-      beam.object3D.visible = false;
-    }
-  }
-});
-</script>
+    // Material fix to set initial color and properties
+    AFRAME.registerComponent('fix-material', {
+        init: function () {
+            this.el.addEventListener('model-loaded', () => {
+                const mesh = this.el.getObject3D('mesh');
+                if (!mesh) return;
+                mesh.traverse((node) => {
+                    if (node.isMesh) {
+                        node.material.color.set('#8db396');
+                        node.material.roughness = 0.6;
+                        node.material.metalness = 0.1;
+                    }
+                });
+            });
+        }
+    });
+    </script>
 </head>
 
 <body style="margin:0; overflow:hidden;">
-  <a-scene embedded
-           arjs="sourceType: webcam; debugUIEnabled: false; patternRatio: 0.7;"
-           dynamic-beam>
+    <!-- DEBUG HUD -->
+    <div id="hud" style="position: fixed; top: 10px; left: 10px; z-index: 999; 
+                        background: rgba(0,0,0,0.8); color: white; padding: 10px; 
+                        font-family: sans-serif; border-radius: 5px; pointer-events: none;">
+        Initializing...
+    </div>
 
-    <!-- Balanced Lighting -->
-    <a-entity light="type: ambient; intensity: 0.8;"></a-entity>
-    <a-entity light="type: directional; intensity: 1.0;" position="1 4 2"></a-entity>
+    <a-scene embedded 
+             arjs="sourceType: webcam; debugUIEnabled: false; patternRatio: 0.7;" 
+             dynamic-beam>
 
-    <!-- Marker 1: Illumination Anchor -->
-    <a-marker id="marker-illum" type="pattern" url="pattern-illum.patt">
-      <a-box color="red" scale="0.1 0.1 0.1" opacity="0.5"></a-box>
-    </a-marker>
+        <a-entity light="type: ambient; intensity: 0.8;"></a-entity>
+        <a-entity light="type: directional; intensity: 1.0;" position="1 4 2"></a-entity>
 
-    <!-- Marker 2: Flow Anchor -->
-    <a-marker id="marker-flow" type="pattern" url="pattern-flow.patt">
-      <a-box color="blue" scale="0.1 0.1 0.1" opacity="0.5"></a-box>
-    </a-marker>
+        <!-- MARKER 1 -->
+        <a-marker id="marker-illum" type="pattern" url="pattern-illum.patt">
+            <a-box color="red" scale="0.05 0.05 0.05"></a-box>
+        </a-marker>
 
-    <!-- The Beam Entity -->
-    <a-entity id="beam"
-              gltf-model="url(beam_w.glb)"
-              fix-material
-              visible="false">
-    </a-entity>
+        <!-- MARKER 2 -->
+        <a-marker id="marker-flow" type="pattern" url="pattern-flow.patt">
+            <a-box color="blue" scale="0.05 0.05 0.05"></a-box>
+        </a-marker>
 
-    <a-entity camera></a-entity>
-  </a-scene>
+        <!-- THE BEAM -->
+        <a-entity id="beam" 
+                  gltf-model="url(beam_w.glb)" 
+                  fix-material 
+                  visible="false">
+        </a-entity>
+
+        <a-entity camera></a-entity>
+    </a-scene>
 </body>
 </html>
