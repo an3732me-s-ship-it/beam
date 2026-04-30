@@ -8,56 +8,57 @@
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
   <script>
-  AFRAME.registerComponent('dynamic-beam', {
-    init: function () {
-      this.p1 = new THREE.Vector3();
-      this.p2 = new THREE.Vector3();
-      this.mid = new THREE.Vector3();
-      this.dir = new THREE.Vector3();
-      this.quat = new THREE.Quaternion();
+ AFRAME.registerComponent('dynamic-beam', {
+  init: function () {
+    this.p1 = new THREE.Vector3();
+    this.p2 = new THREE.Vector3();
+    this.mid = new THREE.Vector3();
+    this.dir = new THREE.Vector3();
+    this.quat = new THREE.Quaternion();
 
-      // Axis of the beam length in your GLB (usually Z)
-      this.axis = new THREE.Vector3(0, 0, 1);
-    },
+    // Use the Z-axis as the length reference as confirmed by your working orientation
+    this.axis = new THREE.Vector3(0, 0, 1);
+  },
 
-    tick: function () {
-      const m1 = document.querySelector('#marker-illum');
-      const m2 = document.querySelector('#marker-flow');
-      const beam = document.querySelector('#beam');
+  tick: function () {
+    const m1 = document.querySelector('#marker-illum');
+    const m2 = document.querySelector('#marker-flow');
+    const beam = document.querySelector('#beam');
 
-      if (!m1 || !m2 || !beam) return;
+    if (!m1 || !m2 || !beam) return;
 
-      if (m1.object3D.visible && m2.object3D.visible) {
-        // 1. Update World Positions
-        m1.object3D.getWorldPosition(this.p1);
-        m2.object3D.getWorldPosition(this.p2);
+    if (m1.object3D.visible && m2.object3D.visible) {
+      // 1. GET POSITIONS
+      m1.object3D.getWorldPosition(this.p1);
+      m2.object3D.getWorldPosition(this.p2);
 
-        // 2. Calculate Distance
-        const distance = this.p1.distanceTo(this.p2);
+      // 2. CALCULATE DISTANCE
+      const distance = this.p1.distanceTo(this.p2);
 
-        // 3. Set Midpoint (The beam "grows" from the center)
-        this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
-        beam.object3D.position.copy(this.mid);
+      // 3. POSITION AT MIDPOINT
+      this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
+      beam.object3D.position.copy(this.mid);
 
-        // 4. Set Rotation (Points p1 toward p2)
-        this.dir.subVectors(this.p2, this.p1).normalize();
-        this.quat.setFromUnitVectors(this.axis, this.dir);
-        beam.object3D.quaternion.copy(this.quat);
-        
-        // Internal GLB Correction (keeps the beam upright)
-        beam.object3D.rotateZ(Math.PI / 2);
+      // 4. ROTATION (Using your confirmed axis)
+      this.dir.subVectors(this.p2, this.p1).normalize();
+      this.quat.setFromUnitVectors(this.axis, this.dir);
+      beam.object3D.quaternion.copy(this.quat);
+      
+      // Keeping your orientation fix from the screenshot version
+      beam.object3D.rotateZ(Math.PI / 2);
 
-        // 5. DYNAMIC SCALE
-        // X and Y stay 12 (thickness). Z scales with the distance.
-        // If the beam is too short, increase the '1' multiplier (e.g., distance * 1.2)
-        beam.object3D.scale.set(12, 12, distance); 
+      // 5. SCALE: INCREASE MULTIPLIER TO REACH MARKERS
+      // We lock Width (X) and Height (Y) to keep the rectangular shape.
+      // We multiply distance by 40 so the Z-axis length actually reaches the markers.
+      const multiplier = 40; 
+      beam.object3D.scale.set(12, 6, distance * multiplier);
 
-        beam.object3D.visible = true;
-      } else {
-        beam.object3D.visible = false;
-      }
+      beam.object3D.visible = true;
+    } else {
+      beam.object3D.visible = false;
     }
-  });
+  }
+});
 
   AFRAME.registerComponent('fix-material', {
     init: function () {
