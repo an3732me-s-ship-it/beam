@@ -44,9 +44,6 @@
         this.quat.setFromUnitVectors(this.axis, this.dir);
         beam.object3D.quaternion.copy(this.quat);
 
-        // ✅ NO SCALING (true Rhino geometry)
-        beam.object3D.scale.set(1, 1, 1);
-
         beam.object3D.visible = true;
 
       } else {
@@ -99,6 +96,7 @@
     <a-entity id="beam"
               gltf-model="url(beam_w.glb)"
               scale="10 10 10"
+              rotation="0 0 90"
               fix-material
               visible="false">
     </a-entity>
