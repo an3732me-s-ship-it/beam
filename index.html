@@ -19,47 +19,57 @@
   },
 
   tick: function () {
-    const m1 = document.querySelector('#marker-illum');
-    const m2 = document.querySelector('#marker-flow');
-    const beam = document.querySelector('#beam');
+      const m1 = document.querySelector('#marker-illum');
+      const m2 = document.querySelector('#marker-flow');
+      const beam = document.querySelector('#beam');
 
-    if (!m1 || !m2 || !beam) return;
+      if (!m1 || !m2 || !beam) return;
 
-    if (m1.object3D.visible && m2.object3D.visible) {
-      m1.object3D.getWorldPosition(this.p1);
-      m2.object3D.getWorldPosition(this.p2);
+      if (m1.object3D.visible && m2.object3D.visible) {
+        m1.object3D.getWorldPosition(this.p1);
+        m2.object3D.getWorldPosition(this.p2);
 
-      const actualDistance = this.p1.distanceTo(this.p2);
+        const actualDistance = this.p1.distanceTo(this.p2);
 
-      // 1. Subtract the 6cm gap between marker centers
-      let beamLengthNeeded = actualDistance - 0.06;
-      if (beamLengthNeeded < 0) beamLengthNeeded = 0;
+        // --- CALIBRATION ---
+        const gapOffset = 0.06;   
+        const sensitivity = 0.1;  
+        const dangerThreshold = 0.15; //15cm: the point where it turns red
+        // ---------------------------
 
-      // 2. THE RATIO CALCULATION
-      // If your model is 40cm long (0.4m), we divide by 0.4.
-      // This makes the scale "1.0" when the markers are exactly 40cm apart (plus the 6cm).
-      const modelBaseLength = 0.1; 
-      const lengthScale = beamLengthNeeded / modelBaseLength;
+        let beamLengthNeeded = actualDistance - gapOffset;
+        if (beamLengthNeeded < 0) beamLengthNeeded = 0;
 
-      // 3. APPLY POSITION & ROTATION
-      this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
-      beam.object3D.position.copy(this.mid);
-      this.dir.subVectors(this.p2, this.p1).normalize();
-      this.quat.setFromUnitVectors(this.axis, this.dir);
-      beam.object3D.quaternion.copy(this.quat);
-      beam.object3D.rotateZ(Math.PI / 2);
+        const lengthScale = beamLengthNeeded / sensitivity;
 
-      // 4. THE SCALE
-      // We keep X and Y at 12 to preserve the rectangular cross-section you like.
-      // We only use the dynamic ratio for Z.
-      beam.object3D.scale.set(12, 12, lengthScale);
+        // Apply Position and Rotation
+        this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
+        beam.object3D.position.copy(this.mid);
+        this.dir.subVectors(this.p2, this.p1).normalize();
+        this.quat.setFromUnitVectors(this.axis, this.dir);
+        beam.object3D.quaternion.copy(this.quat);
+        beam.object3D.rotateZ(Math.PI / 2);
+        beam.object3D.scale.set(12, 12, lengthScale);
 
-      beam.object3D.visible = true;
-    } else {
-      beam.object3D.visible = false;
+        // --- COLOR CHANGE LOGIC ---
+        const mesh = beam.getObject3D('mesh');
+        if (mesh) {
+          mesh.traverse((node) => {
+            if (node.isMesh) {
+              if (actualDistance > dangerThreshold) {
+                node.material.color.set('#ff0000'); // Danger Red
+              } else {
+                node.material.color.set('#8db396'); // Original Green
+              }
+            }
+          });
+        }
+
+        beam.object3D.visible = true;
+      } else {
+        beam.object3D.visible = false;
+      }
     }
-  }
-});
     
   AFRAME.registerComponent('fix-material', {
     init: function () {
