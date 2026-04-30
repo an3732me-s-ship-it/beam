@@ -43,6 +43,7 @@
         // --- ROTATION ---
         this.quat.setFromUnitVectors(this.axis, this.dir);
         beam.object3D.quaternion.copy(this.quat);
+        beam.object3D.rotateZ(Math.PI / 2);
 
         beam.object3D.visible = true;
 
@@ -95,8 +96,7 @@
     <!-- GLB BEAM -->
     <a-entity id="beam"
               gltf-model="url(beam_w.glb)"
-              scale="10 10 10"
-              rotation="0 0 90"
+              scale="11 11 11"
               fix-material
               visible="false">
     </a-entity>
