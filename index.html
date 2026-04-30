@@ -1,8 +1,8 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>GLB Beam Between Markers</title>
+  <title>Dynamic Scaling GLB Beam</title>
 
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -16,7 +16,7 @@
       this.dir = new THREE.Vector3();
       this.quat = new THREE.Quaternion();
 
-      // Assume beam length is along Z axis (change if needed)
+      // Axis of the beam length in your GLB (usually Z)
       this.axis = new THREE.Vector3(0, 0, 1);
     },
 
@@ -28,34 +28,37 @@
       if (!m1 || !m2 || !beam) return;
 
       if (m1.object3D.visible && m2.object3D.visible) {
-
-        // --- GET POSITIONS ---
+        // 1. Update World Positions
         m1.object3D.getWorldPosition(this.p1);
         m2.object3D.getWorldPosition(this.p2);
 
-        // --- MIDPOINT POSITION ---
+        // 2. Calculate Distance
+        const distance = this.p1.distanceTo(this.p2);
+
+        // 3. Set Midpoint (The beam "grows" from the center)
         this.mid.addVectors(this.p1, this.p2).multiplyScalar(0.5);
         beam.object3D.position.copy(this.mid);
 
-        // --- DIRECTION ---
+        // 4. Set Rotation (Points p1 toward p2)
         this.dir.subVectors(this.p2, this.p1).normalize();
-
-        // --- ROTATION ---
         this.quat.setFromUnitVectors(this.axis, this.dir);
         beam.object3D.quaternion.copy(this.quat);
+        
+        // Internal GLB Correction (keeps the beam upright)
         beam.object3D.rotateZ(Math.PI / 2);
-        
-        
+
+        // 5. DYNAMIC SCALE
+        // X and Y stay 12 (thickness). Z scales with the distance.
+        // If the beam is too short, increase the '1' multiplier (e.g., distance * 1.2)
+        beam.object3D.scale.set(12, 12, distance); 
 
         beam.object3D.visible = true;
-
       } else {
         beam.object3D.visible = false;
       }
     }
   });
 
-  // --- MATERIAL FIX ---
   AFRAME.registerComponent('fix-material', {
     init: function () {
       this.el.addEventListener('model-loaded', () => {
@@ -81,24 +84,23 @@
            arjs="sourceType: webcam; debugUIEnabled: false; patternRatio: 0.7;"
            dynamic-beam>
 
-    <!-- LIGHTING -->
-    <a-entity light="type: ambient; intensity: 0.9;"></a-entity>
-    <a-entity light="type: directional; intensity: 1.2;" position="1 4 2"></a-entity>
+    <!-- Balanced Lighting -->
+    <a-entity light="type: ambient; intensity: 0.8;"></a-entity>
+    <a-entity light="type: directional; intensity: 1.0;" position="1 4 2"></a-entity>
 
-    <!-- MARKER 1 -->
+    <!-- Marker 1: Illumination Anchor -->
     <a-marker id="marker-illum" type="pattern" url="pattern-illum.patt">
-      <a-box color="red" scale="0.2 0.2 0.2"></a-box>
+      <a-box color="red" scale="0.1 0.1 0.1" opacity="0.5"></a-box>
     </a-marker>
 
-    <!-- MARKER 2 -->
+    <!-- Marker 2: Flow Anchor -->
     <a-marker id="marker-flow" type="pattern" url="pattern-flow.patt">
-      <a-box color="red" scale="0.2 0.2 0.2"></a-box>
+      <a-box color="blue" scale="0.1 0.1 0.1" opacity="0.5"></a-box>
     </a-marker>
 
-    <!-- GLB BEAM -->
+    <!-- The Beam Entity -->
     <a-entity id="beam"
               gltf-model="url(beam_w.glb)"
-              scale="12 12 12"
               fix-material
               visible="false">
     </a-entity>
